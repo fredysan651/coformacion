@@ -1,12 +1,10 @@
 {
-  "buildCommand": "npm run build -- --configuration production",
-  "outputDirectory": "./dist/front-cofor",
-  "framework": "angular",
+  "buildCommand": "npm run build:prod 2>/dev/null || npm run build -- --configuration production",
+  "outputDirectory": "dist/front-cofor",
   "installCommand": "npm install",
-  "devCommand": "npm run start",
-  "env": {
-    "ANGULAR_ENVIRONMENT": "production"
-  }
+  "devCommand": "npm start",
+  "framework": "angular",
+  "ignoreCommand": "git diff --quiet HEAD~1"
 }
 
 
