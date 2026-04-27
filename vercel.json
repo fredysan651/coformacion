@@ -1,9 +1,12 @@
 {
-  "buildCommand": "npm install && npm run build -- --configuration production",
-  "outputDirectory": "dist/front-cofor",
+  "buildCommand": "npm run build -- --configuration production",
+  "outputDirectory": "./dist/front-cofor",
   "framework": "angular",
   "installCommand": "npm install",
-  "devCommand": "npm run start"
+  "devCommand": "npm run start",
+  "env": {
+    "ANGULAR_ENVIRONMENT": "production"
+  }
 }
 
 
