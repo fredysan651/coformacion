@@ -114,6 +114,50 @@
                                class="form-control">
                     </div>
                 </div>
+                <div class="form-row">
+                    <div class="form-field">
+                        <label>EPS</label>
+                        <select [(ngModel)]="estudiante.eps_id" 
+                                name="eps_id"
+                                class="form-control">
+                            <option [value]="null">Seleccionar EPS (opcional)</option>
+                            <option *ngFor="let eps of listaEps" [value]="eps.eps_id">
+                                {{ eps.nombre }}
+                            </option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-field full-width">
+                        <label>Foto del Estudiante</label>
+                        <div class="photo-upload-section">
+                            <div class="photo-preview" *ngIf="fotoPreview">
+                                <img [src]="fotoPreview" alt="Previsualización de foto">
+                                <button type="button" class="btn-remove-photo" (click)="removerFoto()" title="Eliminar foto">×</button>
+                            </div>
+                            <div *ngIf="!fotoPreview && estudiante.foto" class="photo-preview">
+                                <img [src]="getFotoUrl()" alt="Foto actual">
+                                <button type="button" class="btn-remove-photo" (click)="removerFoto()" title="Cambiar foto">×</button>
+                            </div>
+                            <div class="photo-input-wrapper">
+                                <input 
+                                    type="file" 
+                                    #fileInput 
+                                    hidden 
+                                    (change)="onFotoSeleccionada($event)"
+                                    accept="image/jpeg,image/png,image/gif,image/webp">
+                                <button 
+                                    type="button" 
+                                    class="btn-upload-photo" 
+                                    (click)="fileInput.click()">
+                                    📷 Seleccionar Foto
+                                </button>
+                                <p class="help-text">Formatos: JPG, PNG, GIF, WEBP • Máximo 5MB</p>
+                                <div *ngIf="fotoError" class="error-message">{{ fotoError }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </section>
 

@@ -50,4 +50,12 @@ export class EstudiantesService {
     const loginUrl = `${this.apiConfig.getBaseUrl()}/auth/login-estudiante/`;
     return this.http.post<any>(loginUrl, loginData);
   }
+
+  // Método para subir foto de estudiante
+  subirFoto(estudianteId: number, formData: FormData): Observable<any> {
+    return this.http.post<any>(
+      `${this.apiUrl}${estudianteId}/upload-foto/`,
+      formData
+    );
+  }
 }

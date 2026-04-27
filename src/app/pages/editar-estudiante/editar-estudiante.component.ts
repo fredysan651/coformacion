@@ -9,6 +9,7 @@ import { PromocionesService } from '../../services/promociones.service';
 import { TiposDocumentoService } from '../../services/tipos_documento.service';
 import { NivelesInglesService } from '../../services/niveles_ingles.service';
 import { EstadosCarteraService } from '../../services/estados_cartera.service';
+import { EstudiantesEpsService } from '../../services/estudiantes_eps.service';
 import { Estudiante, Programa, Facultad, Promocion, TipoDocumento, NivelIngles, EstadoCartera } from '../../models/interfaces';
 
 @Component({
@@ -34,6 +35,7 @@ export class EditarEstudianteComponent implements OnInit {
     direccion: '',
     ciudad: '',
     foto_url: '',
+    foto: undefined,
     programa_id: 0,
     semestre: 1,
     jornada: 'Diurna',
@@ -44,7 +46,8 @@ export class EditarEstudianteComponent implements OnInit {
     fecha_actualizacion: '',
     nivel_ingles_id: null,
     estado_cartera_id: null,
-    promocion_id: null
+    promocion_id: null,
+    eps_id: null
   };
 
   // Datos de referencia para los dropdowns
@@ -54,6 +57,7 @@ export class EditarEstudianteComponent implements OnInit {
   tiposDocumento: TipoDocumento[] = [];
   nivelesIngles: NivelIngles[] = [];
   estadosCartera: EstadoCartera[] = [];
+  listaEps: any[] = [];
 
   isLoading = true;
   isSaving = false;
@@ -64,6 +68,11 @@ export class EditarEstudianteComponent implements OnInit {
   // Para almacenar los datos originales
   originalData: Estudiante | null = null;
 
+  // Propiedades para la foto
+  fotoSeleccionada: File | null = null;
+  fotoPreview: string | null = null;
+  fotoError: string | null = null;
+
   constructor(
     private router: Router,
     private route: ActivatedRoute,
@@ -73,7 +82,8 @@ export class EditarEstudianteComponent implements OnInit {
     private promocionesService: PromocionesService,
     private tiposDocumentoService: TiposDocumentoService,
     private nivelesInglesService: NivelesInglesService,
-    private estadosCarteraService: EstadosCarteraService
+    private estadosCarteraService: EstadosCarteraService,
+    private estudiantesEpsService: EstudiantesEpsService
   ) {}
 
   ngOnInit(): void {
@@ -107,8 +117,9 @@ export class EditarEstudianteComponent implements OnInit {
       this.promocionesService.getAll().toPromise(),
       this.tiposDocumentoService.getAll().toPromise(),
       this.nivelesInglesService.getAll().toPromise(),
-      this.estadosCarteraService.getAll().toPromise()
-    ]).then(([estudiante, programas, facultades, promociones, tiposDocumento, nivelesIngles, estadosCartera]) => {
+      this.estadosCarteraService.getAll().toPromise(),
+      this.estudiantesEpsService.getAll().toPromise()
+    ]).then(([estudiante, programas, facultades, promociones, tiposDocumento, nivelesIngles, estadosCartera, listaEps]) => {
       this.estudiante = { ...estudiante };
       this.originalData = { ...estudiante };
       this.programas = programas || [];
@@ -117,6 +128,7 @@ export class EditarEstudianteComponent implements OnInit {
       this.tiposDocumento = tiposDocumento || [];
       this.nivelesIngles = nivelesIngles || [];
       this.estadosCartera = estadosCartera || [];
+      this.listaEps = listaEps || [];
       this.isLoading = false;
     }).catch(error => {
       console.error('Error cargando datos:', error);
@@ -158,6 +170,12 @@ export class EditarEstudianteComponent implements OnInit {
     return estado ? estado.nombre : 'Sin estado asignado';
   }
 
+  getEpsNombre(): string {
+    if (!this.estudiante.eps_id) return 'Sin EPS asignada';
+    const eps = this.listaEps.find(e => e.eps_id === this.estudiante.eps_id);
+    return eps ? eps.nombre : 'Sin EPS asignada';
+  }
+
   // Validación del formulario
   isValidForm(): boolean {
     return !!(
@@ -195,11 +213,28 @@ export class EditarEstudianteComponent implements OnInit {
       celular: this.estudiante.celular,
       direccion: this.estudiante.direccion?.trim() || null,
       ciudad: this.estudiante.ciudad?.trim() || null,
-      foto_url: this.estudiante.foto_url?.trim() || null
+      eps_id: this.estudiante.eps_id || null
     };
 
     this.estudiantesService.update(this.estudiante.estudiante_id, updateData).subscribe({
-      next: (response) => {
+      next: async (response) => {
+        // Subir foto si existe
+        if (this.fotoSeleccionada) {
+          const formData = new FormData();
+          formData.append('foto', this.fotoSeleccionada);
+          
+          try {
+            await this.estudiantesService.subirFoto(this.estudiante.estudiante_id, formData).toPromise();
+            console.log('Foto subida exitosamente');
+            // Limpiar la foto seleccionada
+            this.fotoSeleccionada = null;
+            this.fotoPreview = null;
+          } catch (fotoError) {
+            console.error('Error al subir la foto:', fotoError);
+            // No detener el proceso aunque falle la foto
+          }
+        }
+
         this.originalData = { ...this.estudiante };
         this.successMessage = 'Información del estudiante actualizada exitosamente.';
         this.isSaving = false;
@@ -258,5 +293,68 @@ export class EditarEstudianteComponent implements OnInit {
 
   refreshData() {
     this.loadData();
+  }
+
+  /**
+   * Obtener la URL de la foto del estudiante
+   */
+  getFotoUrl(): string {
+    if (this.estudiante?.foto) {
+      // Si la foto es una URL completa, retornarla tal cual
+      if (this.estudiante.foto.startsWith('http')) {
+        return this.estudiante.foto;
+      }
+      // Si es una ruta relativa del servidor, agregarle el dominio
+      return `http://127.0.0.1:8001${this.estudiante.foto}`;
+    }
+    // Si no hay foto, mostrar la imagen por defecto
+    return 'assets/userLogo.png';
+  }
+
+  /**
+   * Manejar la selección de una nueva foto
+   */
+  onFotoSeleccionada(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const files = input.files;
+
+    if (!files || files.length === 0) {
+      return;
+    }
+
+    const archivo = files[0];
+    this.fotoError = null;
+
+    // Validar tipo de archivo
+    const tiposPermitidos = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!tiposPermitidos.includes(archivo.type)) {
+      this.fotoError = 'Formato no permitido. Use JPG, PNG, GIF o WEBP';
+      return;
+    }
+
+    // Validar tamaño (máximo 5MB)
+    if (archivo.size > 5 * 1024 * 1024) {
+      this.fotoError = 'El archivo no debe exceder 5MB';
+      return;
+    }
+
+    // Guardar archivo y crear previsualización
+    this.fotoSeleccionada = archivo;
+
+    // Crear previsualización
+    const reader = new FileReader();
+    reader.onload = (e: any) => {
+      this.fotoPreview = e.target.result;
+    };
+    reader.readAsDataURL(archivo);
+  }
+
+  /**
+   * Remover la foto seleccionada
+   */
+  removerFoto(): void {
+    this.fotoSeleccionada = null;
+    this.fotoPreview = null;
+    this.fotoError = null;
   }
 }

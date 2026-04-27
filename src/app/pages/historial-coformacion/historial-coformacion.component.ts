@@ -48,6 +48,19 @@ export class HistorialCoformacionComponent implements OnInit {
       if (params['estudiante_id']) {
         this.currentStudentId = +params['estudiante_id'];
         console.log('CurrentStudentId establecido a:', this.currentStudentId);
+      } else {
+        // Si no está en parámetros, obtener del sessionStorage (del login directo)
+        const storedId = sessionStorage.getItem('estudiante_id');
+        if (storedId) {
+          this.currentStudentId = +storedId;
+          console.log('CurrentStudentId obtenido del sessionStorage:', this.currentStudentId);
+        }
+        // También intentar obtener del AuthService
+        const currentUser = this.authService.getCurrentUser();
+        if (!this.currentStudentId && currentUser?.estudiante_id) {
+          this.currentStudentId = currentUser.estudiante_id;
+          console.log('CurrentStudentId obtenido del AuthService:', this.currentStudentId);
+        }
       }
       // Detectar si viene del formulario (cuando hay estudiante_id en params)
       this.vieneDelFormulario = !!params['estudiante_id'];
@@ -64,7 +77,7 @@ export class HistorialCoformacionComponent implements OnInit {
 
     // Cargar todos los procesos y datos necesarios
     Promise.all([
-      this.procesoCoformacionService.getAll().toPromise().catch(err => {
+      this.procesoCoformacionService.getAll(this.currentStudentId || undefined).toPromise().catch(err => {
         console.error('Error cargando procesos:', err);
         return [];
       }),

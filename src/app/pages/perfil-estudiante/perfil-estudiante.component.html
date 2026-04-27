@@ -23,10 +23,35 @@
         <h2>Información Personal</h2>
         <div class="info-grid">
             <div class="profile-image">
-                <img src="assets/userLogo.png" alt="Foto de perfil">
+                <div class="photo-container">
+                    <img 
+                        [src]="getFotoUrl()" 
+                        alt="Foto de perfil"
+                        class="student-photo">
+                    <div class="photo-overlay" *ngIf="!isLoadingFoto">
+                        <input 
+                            type="file" 
+                            #fileInput 
+                            hidden 
+                            (change)="onFotoSeleccionada($event)"
+                            accept="image/jpeg,image/png,image/gif,image/webp">
+                        <button 
+                            class="upload-btn" 
+                            (click)="fileInput.click()"
+                            type="button">
+                            📷 Cambiar Foto
+                        </button>
+                    </div>
+                    <div *ngIf="isLoadingFoto" class="loading-foto">
+                        <span>Cargando...</span>
+                    </div>
+                </div>
                 <div class="profile-code">
                     <span>ID Estudiante:</span>
                     <strong>{{ estudiante.estudiante_id }}</strong>
+                </div>
+                <div *ngIf="mensajeFoto" [ngClass]="'mensaje-' + tipoMensajeFoto" class="mensaje-foto">
+                    {{ mensajeFoto }}
                 </div>
             </div>
             <div class="info-row">

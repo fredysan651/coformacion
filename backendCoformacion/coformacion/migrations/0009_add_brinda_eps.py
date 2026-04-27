@@ -8,15 +8,9 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        # Añadir la columna `brinda_eps` si no existe para mantener la compatibilidad
+        # Placeholder migration - tabla ya existe o será creada por fixture/dump
         migrations.RunSQL(
-            sql="""
-            ALTER TABLE `ofertasempresas`
-            ADD COLUMN IF NOT EXISTS `brinda_eps` varchar(3) DEFAULT 'No';
-            """,
-            reverse_sql="""
-            ALTER TABLE `ofertasempresas`
-            DROP COLUMN IF EXISTS `brinda_eps`;
-            """,
+            sql="SELECT 1;",
+            reverse_sql="SELECT 1;",
         ),
     ]

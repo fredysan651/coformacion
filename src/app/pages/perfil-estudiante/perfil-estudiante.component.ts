@@ -38,6 +38,11 @@ export class PerfilEstudianteComponent implements OnInit {
   estudianteId: number | null = null;
   isCoformador: boolean = false;
 
+  // Propiedades para la carga de foto
+  isLoadingFoto = false;
+  mensajeFoto: string | null = null;
+  tipoMensajeFoto: 'exito' | 'error' | 'info' = 'info';
+
   constructor(
     private router: Router,
     private route: ActivatedRoute,
@@ -326,4 +331,98 @@ export class PerfilEstudianteComponent implements OnInit {
   refreshData() {
     this.loadStudentProfile();
   }
+
+  /**
+   * Obtener la URL de la foto del estudiante
+   */
+  getFotoUrl(): string {
+    if (this.estudiante?.foto) {
+      // Si la foto es una URL completa, retornarla tal cual
+      if (this.estudiante.foto.startsWith('http')) {
+        return this.estudiante.foto;
+      }
+      // Si es una ruta relativa del servidor, agregarle el dominio
+      return `http://127.0.0.1:8001${this.estudiante.foto}`;
+    }
+    // Si no hay foto, mostrar la imagen por defecto
+    return 'assets/userLogo.png';
+  }
+
+  /**
+   * Manejar la selección de una nueva foto
+   */
+  onFotoSeleccionada(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const files = input.files;
+
+    if (!files || files.length === 0) {
+      return;
+    }
+
+    const archivo = files[0];
+
+    // Validar tipo de archivo
+    const tiposPermitidos = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!tiposPermitidos.includes(archivo.type)) {
+      this.mostrarMensaje('error', 'Formato de archivo no permitido. Use JPG, PNG, GIF o WEBP');
+      return;
+    }
+
+    // Validar tamaño (máximo 5MB)
+    if (archivo.size > 5 * 1024 * 1024) {
+      this.mostrarMensaje('error', 'El archivo no debe exceder 5MB');
+      return;
+    }
+
+    this.cargarFoto(archivo);
+  }
+
+  /**
+   * Cargar la foto al servidor
+   */
+  private cargarFoto(archivo: File): void {
+    if (!this.estudiante || !this.estudiantesService) {
+      return;
+    }
+
+    this.isLoadingFoto = true;
+    this.mensajeFoto = null;
+
+    const formData = new FormData();
+    formData.append('foto', archivo);
+
+    // Llamar al endpoint de carga de foto
+    this.estudiantesService.subirFoto(this.estudiante.estudiante_id, formData).subscribe({
+      next: (response: any) => {
+        this.isLoadingFoto = false;
+        
+        // Actualizar la data del estudiante con la nueva foto
+        if (response.estudiante) {
+          this.estudiante = response.estudiante;
+        }
+        
+        this.mostrarMensaje('exito', 'Foto actualizada correctamente');
+        
+        // Limpiar el mensaje después de 5 segundos
+        setTimeout(() => {
+          this.mensajeFoto = null;
+        }, 5000);
+      },
+      error: (error: any) => {
+        this.isLoadingFoto = false;
+        const mensaje = error?.error?.error || 'Error al cargar la foto';
+        this.mostrarMensaje('error', mensaje);
+        console.error('Error cargando foto:', error);
+      }
+    });
+  }
+
+  /**
+   * Mostrar un mensaje al usuario
+   */
+  private mostrarMensaje(tipo: 'exito' | 'error' | 'info', mensaje: string): void {
+    this.tipoMensajeFoto = tipo;
+    this.mensajeFoto = mensaje;
+  }
 }
+

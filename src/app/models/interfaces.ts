@@ -55,6 +55,7 @@ export interface Estudiante {
   direccion?: string | null;
   ciudad?: string | null;
   foto_url?: string | null;
+  foto?: string | undefined; // URL de la foto del servidor
   programa_id: number;
   semestre: number;
   jornada: string;

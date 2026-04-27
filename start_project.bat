@@ -68,8 +68,8 @@ if not exist "manage.py" (
 echo [INFO] Ejecutando migraciones...
 python manage.py migrate
 
-echo [SUCCESS] Iniciando servidor Django en http://127.0.0.1:8000
-start "Django Server" cmd /k "python manage.py runserver"
+echo [SUCCESS] Iniciando servidor Django en http://127.0.0.1:8001
+start "Django Server" cmd /k "python manage.py runserver 127.0.0.1:8001"
 
 REM Volver al directorio principal
 cd ..
@@ -79,8 +79,8 @@ timeout /t 3 /nobreak >nul
 
 echo.
 echo [INFO] Iniciando frontend Angular...
-echo [SUCCESS] Iniciando servidor Angular en http://localhost:4200
-start "Angular Server" cmd /k "ng serve"
+echo [SUCCESS] Iniciando servidor Angular en http://localhost:4201
+start "Angular Server" cmd /k "ng serve --port 4201"
 
 REM Esperar un poco para que Angular se inicie
 timeout /t 3 /nobreak >nul
@@ -90,14 +90,14 @@ echo ==============================================
 echo   🎉 ¡Servidores iniciados exitosamente!
 echo ==============================================
 echo.
-echo Frontend Angular: http://localhost:4200
-echo Backend Django:   http://127.0.0.1:8000
-echo Admin Django:     http://127.0.0.1:8000/admin
-echo API Endpoints:    http://127.0.0.1:8000/api/
-echo Diagnostico:      http://localhost:4200/diagnostico
+echo Frontend Angular: http://localhost:4201
+echo Backend Django:   http://127.0.0.1:8001
+echo Admin Django:     http://127.0.0.1:8001/admin
+echo API Endpoints:    http://127.0.0.1:8001/api/
+echo Diagnostico:      http://localhost:4201/diagnostico
 echo.
 echo Se abrieron dos ventanas de comandos:
-echo - Una para el servidor Django (puerto 8000)
+echo - Una para el servidor Django (puerto 8001)
 echo - Una para el servidor Angular (puerto 4200)
 echo.
 echo Para detener los servidores, cierra ambas ventanas

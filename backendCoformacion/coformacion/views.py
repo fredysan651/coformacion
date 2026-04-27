@@ -1,5 +1,5 @@
 from rest_framework import viewsets, status
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, action
 from rest_framework.response import Response
 from rest_framework import serializers
 from .models import Coformacion, Estudiantes, Empresas, Roles, Permisos, RolesPermisos, TiposDocumento, Facultades, Programas, MateriasNucleo, ObjetivosAprendizaje, Promociones, NivelesIngles, EstadosCartera, SectoresEconomicos, TamanosEmpresa, TiposContacto, ContactosEmpresa, OfertasEmpresas, EstadoProceso, ProcesoCoformacion, DocumentosProceso, TiposActividad, CalendarioActividades, PlantillasCorreo, HistorialComunicaciones
@@ -63,6 +63,101 @@ class EstadosCarteraViewSet(viewsets.ModelViewSet):
 class EstudiantesViewSet(viewsets.ModelViewSet):
     queryset = Estudiantes.objects.all()
     serializer_class = EstudiantesSerializer
+
+    def update(self, request, *args, **kwargs):
+        """
+        Actualizar estudiante con manejo detallado de errores
+        """
+        try:
+            print(f"\n=== UPDATE ESTUDIANTE ===")
+            print(f"Datos recibidos: {request.data}")
+            
+            partial = kwargs.pop('partial', False)
+            instance = self.get_object()
+            serializer = self.get_serializer(instance, data=request.data, partial=partial)
+            
+            if not serializer.is_valid():
+                print(f"Errores de validación: {serializer.errors}")
+                return Response(
+                    {'errors': serializer.errors, 'detail': 'Validación fallida'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            self.perform_update(serializer)
+            print(f"✓ Estudiante actualizado exitosamente")
+            return Response(serializer.data)
+            
+        except Exception as e:
+            import traceback
+            error_trace = traceback.format_exc()
+            print(f"\n❌ Error al actualizar estudiante: {e}")
+            print(error_trace)
+            return Response(
+                {'error': f'Error al actualizar: {str(e)}', 'trace': error_trace},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=True, methods=['post'], url_path='upload-foto')
+    def upload_foto(self, request, pk=None):
+        """
+        Endpoint para subir la foto de un estudiante
+        """
+        try:
+            estudiante = self.get_object()
+            
+            # Validar que se envió un archivo
+            if 'foto' not in request.FILES:
+                return Response(
+                    {'error': 'No se proporcionó ningún archivo de imagen'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            archivo_foto = request.FILES['foto']
+            
+            # Validar extensión del archivo
+            extensiones_permitidas = ['jpg', 'jpeg', 'png', 'gif', 'webp']
+            nombre_archivo = archivo_foto.name.lower()
+            extension = nombre_archivo.split('.')[-1] if '.' in nombre_archivo else ''
+            
+            if extension not in extensiones_permitidas:
+                return Response(
+                    {'error': f'Formato no permitido. Use: {", ".join(extensiones_permitidas)}'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Validar tamaño (máximo 5MB)
+            if archivo_foto.size > 5 * 1024 * 1024:
+                return Response(
+                    {'error': 'El archivo no debe exceder 5MB'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Eliminar foto anterior si existe
+            if estudiante.foto:
+                estudiante.foto.delete()
+            
+            # Guardar nueva foto
+            estudiante.foto = archivo_foto
+            estudiante.save()
+            
+            # Retornar URL de la foto
+            serializer = self.get_serializer(estudiante)
+            return Response(
+                {
+                    'success': True,
+                    'message': 'Foto actualizada correctamente',
+                    'foto_url': estudiante.foto.url if estudiante.foto else None,
+                    'estudiante': serializer.data
+                },
+                status=status.HTTP_200_OK
+            )
+            
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 
 
 class EstudiantesEpsViewSet(viewsets.ModelViewSet):
@@ -315,8 +410,25 @@ class EstadoProcesoViewSet(viewsets.ModelViewSet):
 
 
 class ProcesoCoformacionViewSet(viewsets.ModelViewSet):
-    queryset = ProcesoCoformacion.objects.all()
     serializer_class = ProcesoCoformacionSerializer
+    
+    def get_queryset(self):
+        """
+        Filtra procesos por estudiante_id si viene en query params.
+        Esto asegura que cada estudiante solo vea sus propios procesos.
+        """
+        queryset = ProcesoCoformacion.objects.all()
+        
+        # Filtrar por estudiante_id si viene en los query params
+        estudiante_id = self.request.query_params.get('estudiante_id')
+        if estudiante_id:
+            try:
+                estudiante_id = int(estudiante_id)
+                queryset = queryset.filter(estudiante_id=estudiante_id)
+            except (ValueError, TypeError):
+                pass  # Si no es un número válido, ignorar el filtro
+        
+        return queryset
 
 
 class DocumentosProcesoViewSet(viewsets.ModelViewSet):
@@ -359,7 +471,8 @@ def login_universal(request):
     tipo_usuario = request.data.get('tipo_usuario')  # Puede venir o no
 
     if isinstance(nombre_completo, str):
-        nombre_completo = nombre_completo.strip()
+        # Remover espacios extras (al inicio, final y múltiples espacios en el medio)
+        nombre_completo = ' '.join(nombre_completo.split())
     if isinstance(numero_documento, str):
         numero_documento = numero_documento.strip()
 
@@ -383,14 +496,17 @@ def login_universal(request):
             from django.db.models import Q, Value, CharField
             from django.db.models.functions import Concat
             
-            usuario = Estudiantes.objects.annotate(
-                full_name=Concat('nombres', Value(' '), 'apellidos', output_field=CharField()),
-                reverse_name=Concat('apellidos', Value(' '), 'nombres', output_field=CharField())
-            ).filter(
-                (Q(full_name__icontains=nombre_completo) | 
-                 Q(reverse_name__icontains=nombre_completo) |
-                 Q(nombres__icontains=nombre_completo) |
-                 Q(apellidos__icontains=nombre_completo)),
+            # Dividir el nombre en palabras para búsqueda flexible
+            palabras = nombre_completo.split()
+            
+            # Crear filtro Q que busque cualquier combinación de palabras
+            q_filter = Q()
+            for palabra in palabras:
+                q_filter |= Q(nombres__icontains=palabra) | Q(apellidos__icontains=palabra)
+            
+            # Buscar estudiante
+            usuario = Estudiantes.objects.filter(
+                q_filter,
                 numero_documento=numero_documento
             ).first()
             
@@ -404,7 +520,7 @@ def login_universal(request):
             from django.db.models import Q
             usuario = Empresas.objects.get(
                 Q(nombre_comercial__icontains=nombre_completo) | Q(razon_social__icontains=nombre_completo),
-                nit=numero_documento
+                nit_empresa=numero_documento
             )
             serializer = EmpresasSerializer(usuario)
             redirect_to = '/home-empresa'
@@ -421,19 +537,19 @@ def login_universal(request):
                 tipo_detectado = 'coformacion'
             except Coformacion.DoesNotExist:
                 try:
-                    from django.db.models import Q, Value, CharField
-                    from django.db.models.functions import Concat
+                    from django.db.models import Q
                     
-                    # Buscar estudiante por nombres y apellidos combinados
-                    # Intentamos varias combinaciones para ser flexibles
-                    usuario = Estudiantes.objects.annotate(
-                        full_name=Concat('nombres', Value(' '), 'apellidos', output_field=CharField()),
-                        reverse_name=Concat('apellidos', Value(' '), 'nombres', output_field=CharField())
-                    ).filter(
-                        (Q(full_name__icontains=nombre_completo) | 
-                         Q(reverse_name__icontains=nombre_completo) |
-                         Q(nombres__icontains=nombre_completo) |
-                         Q(apellidos__icontains=nombre_completo)),
+                    # Dividir el nombre en palabras para búsqueda flexible
+                    palabras = nombre_completo.split()
+                    
+                    # Crear filtro Q que busque cualquier combinación de palabras
+                    q_filter = Q()
+                    for palabra in palabras:
+                        q_filter |= Q(nombres__icontains=palabra) | Q(apellidos__icontains=palabra)
+                    
+                    # Buscar estudiante por nombres y apellidos
+                    usuario = Estudiantes.objects.filter(
+                        q_filter,
                         numero_documento=numero_documento
                     ).first()
                     
@@ -448,7 +564,7 @@ def login_universal(request):
                         from django.db.models import Q
                         usuario = Empresas.objects.get(
                             Q(nombre_comercial__icontains=nombre_completo) | Q(razon_social__icontains=nombre_completo),
-                            nit=numero_documento
+                            nit_empresa=numero_documento
                         )
                         serializer = EmpresasSerializer(usuario)
                         redirect_to = '/home-empresa'

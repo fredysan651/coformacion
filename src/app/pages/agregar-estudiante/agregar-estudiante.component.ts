@@ -51,6 +51,11 @@ export class AgregarEstudianteComponent implements OnInit {
   isLoading = false;
   error: string | null = null;
 
+  // Propiedades para la foto
+  fotoSeleccionada: File | null = null;
+  fotoPreview: string | null = null;
+  fotoError: string | null = null;
+
   constructor(
     private fb: FormBuilder,
     private router: Router,
@@ -94,9 +99,6 @@ export class AgregarEstudianteComponent implements OnInit {
       estado_cartera_id: [null],
       empresa_id: [null],
       eps_id: [null],
-
-      // Foto (opcional)
-      foto_url: [''],
 
       // Contacto de Emergencia
       contacto_emergencia: this.fb.group({
@@ -177,7 +179,6 @@ export class AgregarEstudianteComponent implements OnInit {
         email_personal: formValue.email_personal && formValue.email_personal.trim() ? formValue.email_personal.trim() : null,
         direccion: formValue.direccion && formValue.direccion.trim() ? formValue.direccion.trim() : null,
         ciudad: formValue.ciudad && formValue.ciudad.trim() ? formValue.ciudad.trim() : null,
-        foto_url: formValue.foto_url && formValue.foto_url.trim() ? formValue.foto_url.trim() : null,
         promedio_acumulado: formValue.promedio_acumulado ? parseFloat(formValue.promedio_acumulado) : null,
         
         // IDs opcionales
@@ -204,7 +205,22 @@ export class AgregarEstudianteComponent implements OnInit {
 
       console.log('Enviando datos al servidor:', estudianteData);
       
-      await this.estudiantesService.create(estudianteData).toPromise();
+      const response = await this.estudiantesService.create(estudianteData).toPromise() as any;
+      const estudianteId = response.estudiante_id;
+
+      // Subir foto si existe
+      if (this.fotoSeleccionada) {
+        const formData = new FormData();
+        formData.append('foto', this.fotoSeleccionada);
+        
+        try {
+          await this.estudiantesService.subirFoto(estudianteId, formData).toPromise();
+          console.log('Foto subida exitosamente');
+        } catch (fotoError) {
+          console.error('Error al subir la foto:', fotoError);
+          // No detener el proceso aunque falle la foto
+        }
+      }
 
       alert('Estudiante agregado exitosamente');
       this.router.navigate(['/consult-estudent']);
@@ -317,6 +333,53 @@ export class AgregarEstudianteComponent implements OnInit {
     } finally {
       this.isLoading = false;
     }
+  }
+
+  /**
+   * Manejar la selección de foto del estudiante
+   */
+  onFotoSeleccionada(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const files = input.files;
+
+    if (!files || files.length === 0) {
+      return;
+    }
+
+    const archivo = files[0];
+    this.fotoError = null;
+
+    // Validar tipo de archivo
+    const tiposPermitidos = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!tiposPermitidos.includes(archivo.type)) {
+      this.fotoError = 'Formato no permitido. Use JPG, PNG, GIF o WEBP';
+      return;
+    }
+
+    // Validar tamaño (máximo 5MB)
+    if (archivo.size > 5 * 1024 * 1024) {
+      this.fotoError = 'El archivo no debe exceder 5MB';
+      return;
+    }
+
+    // Guardar archivo y crear previsualización
+    this.fotoSeleccionada = archivo;
+
+    // Crear previsualización
+    const reader = new FileReader();
+    reader.onload = (e: any) => {
+      this.fotoPreview = e.target.result;
+    };
+    reader.readAsDataURL(archivo);
+  }
+
+  /**
+   * Remover la foto seleccionada
+   */
+  removerFoto(): void {
+    this.fotoSeleccionada = null;
+    this.fotoPreview = null;
+    this.fotoError = null;
   }
 
   get f() { return this.estudianteForm.controls; }

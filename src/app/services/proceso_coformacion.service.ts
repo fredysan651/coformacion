@@ -15,7 +15,10 @@ export class ProcesoCoformacionService {
     this.apiUrl = this.apiConfig.getProcesoCoformacionUrl();
   }
 
-  getAll(): Observable<any[]> {
+  getAll(estudiante_id?: number): Observable<any[]> {
+    if (estudiante_id) {
+      return this.http.get<any[]>(`${this.apiUrl}?estudiante_id=${estudiante_id}`);
+    }
     return this.http.get<any[]>(this.apiUrl);
   }
 

@@ -79,54 +79,88 @@ class EstudiantesEpsSerializer(serializers.ModelSerializer):
 
 
 class EstudiantesSerializer(serializers.ModelSerializer):
-    nombre_completo = serializers.ReadOnlyField()
-    contacto_emergencia = serializers.SerializerMethodField(read_only=True)
-    contacto_emergencia_input = ContactosDeEmergenciaSerializer(write_only=True, required=False)
-    eps_info = serializers.SerializerMethodField(read_only=True)
-    eps_input = serializers.PrimaryKeyRelatedField(queryset=EstudiantesEps.objects.all(), write_only=True, required=False, allow_null=True)
+    nombre_completo = serializers.CharField(write_only=False, required=False, allow_blank=True)
+    eps_info = EstudiantesEpsSerializer(source='eps_id', read_only=True)
     
     class Meta:
         model = Estudiantes
         fields = '__all__'
-
-    def get_contacto_emergencia(self, obj):
-        contacto = ContactosDeEmergencia.objects.filter(estudiante=obj).first()
-        if contacto:
-            return ContactosDeEmergenciaSerializer(contacto).data
-        return None
-
-    def get_eps_info(self, obj):
-        if obj.eps_id:
-            return EstudiantesEpsSerializer(obj.eps_id).data
-        return None
-
-    def create(self, validated_data):
-        contacto_data = validated_data.pop('contacto_emergencia_input', None)
-        eps_data = validated_data.pop('eps_input', None)
-        estudiante = Estudiantes.objects.create(**validated_data)
-        if contacto_data:
-            ContactosDeEmergencia.objects.create(estudiante=estudiante, **contacto_data)
-        return estudiante
-
+        extra_kwargs = {
+            'fecha_creacion': {'required': False, 'read_only': True},
+            'fecha_actualizacion': {'required': False, 'read_only': True},
+            'codigo_estudiante': {'required': False},
+            'tipo_documento': {'required': False},
+            'numero_documento': {'required': False},
+            'programa_id': {'required': False},
+            'jornada': {'required': False},
+            'semestre': {'required': False},
+            'fecha_nacimiento': {'required': False},
+            'genero': {'required': False},
+            'celular': {'required': False},
+            'email_institucional': {'required': False},
+            'apellidos': {'required': False},
+            'nombres': {'required': False},
+            'fecha_ingreso': {'required': False},
+            'email_personal': {'required': False},
+            'direccion': {'required': False},
+            'ciudad': {'required': False},
+            'telefono': {'required': False},
+            'foto': {'required': False},
+            'promedio_acumulado': {'required': False},
+            'estado': {'required': False},
+            'nivel_ingles_id': {'required': False},
+            'promocion_id': {'required': False},
+            'estado_cartera_id': {'required': False},
+            'empresa_id': {'required': False},
+            'eps_id': {'required': False},
+        }
+    
+    def get_nombre_completo(self, obj):
+        """Combina nombres y apellidos para mostrar el nombre completo"""
+        nombres = obj.nombres or ''
+        apellidos = obj.apellidos or ''
+        return f"{apellidos} {nombres}".strip() if (nombres or apellidos) else 'No registrado'
+    
+    def to_representation(self, instance):
+        """Mostrar nombre_completo calculado en la respuesta"""
+        data = super().to_representation(instance)
+        data['nombre_completo'] = self.get_nombre_completo(instance)
+        return data
+    
     def update(self, instance, validated_data):
-        contacto_data = validated_data.pop('contacto_emergencia_input', None)
-        eps_data = validated_data.pop('eps_input', None)
+        """
+        Actualizar estudiante, procesando nombre_completo si se envía
+        """
+        print(f"\n[UPDATE] Datos validados: {validated_data}")
         
-        # Actualizar datos del estudiante
+        # Excluir campos de timestamp si no vienen en los datos
+        validated_data.pop('fecha_creacion', None)
+        validated_data.pop('fecha_actualizacion', None)
+        
+        # Procesar nombre_completo si viene en los datos
+        nombre_completo = validated_data.pop('nombre_completo', None)
+        if nombre_completo:
+            print(f"[UPDATE] Procesando nombre_completo: {nombre_completo}")
+            # Dividir nombre_completo en apellidos y nombres
+            partes = nombre_completo.strip().split(' ', 1)
+            if len(partes) == 2:
+                validated_data['apellidos'] = partes[0]
+                validated_data['nombres'] = partes[1]
+            elif len(partes) == 1:
+                validated_data['nombres'] = partes[0]
+        
+        # Actualizar la fecha de actualización automáticamente
+        from django.utils import timezone
+        instance.fecha_actualizacion = timezone.now()
+        
+        # Actualizar solo los campos que vinieron en validated_data
         for attr, value in validated_data.items():
-            setattr(instance, attr, value)
+            if hasattr(instance, attr):
+                setattr(instance, attr, value)
+                print(f"[UPDATE] {attr} = {value}")
+        
         instance.save()
-        
-        # Actualizar o crear contacto de emergencia
-        if contacto_data:
-            try:
-                contacto = ContactosDeEmergencia.objects.get(estudiante=instance)
-                for attr, value in contacto_data.items():
-                    setattr(contacto, attr, value)
-                contacto.save()
-            except ContactosDeEmergencia.DoesNotExist:
-                ContactosDeEmergencia.objects.create(estudiante=instance, **contacto_data)
-        
+        print(f"[UPDATE] Guardado exitoso")
         return instance
 
 
@@ -296,10 +330,76 @@ class EmpresaSerializer(serializers.ModelSerializer):
 
 class EstudianteSerializer(serializers.ModelSerializer):
     empresa = EmpresaSerializer(source='empresa_id', read_only=True)
+    eps_info = EstudiantesEpsSerializer(source='eps_id', read_only=True)
+    nombre_completo = serializers.CharField(write_only=False, required=False, allow_blank=True)
     
     class Meta:
         model = Estudiantes
         fields = '__all__'
+        extra_kwargs = {
+            'fecha_creacion': {'required': False, 'read_only': True},
+            'fecha_actualizacion': {'required': False, 'read_only': True},
+            'codigo_estudiante': {'required': False},
+            'tipo_documento': {'required': False},
+            'numero_documento': {'required': False},
+            'programa_id': {'required': False},
+            'jornada': {'required': False},
+            'semestre': {'required': False},
+            'fecha_nacimiento': {'required': False},
+            'genero': {'required': False},
+            'celular': {'required': False},
+            'email_institucional': {'required': False},
+            'apellidos': {'required': False},
+            'nombres': {'required': False},
+            'fecha_ingreso': {'required': False},
+            'email_personal': {'required': False},
+            'direccion': {'required': False},
+            'ciudad': {'required': False},
+            'telefono': {'required': False},
+            'foto': {'required': False},
+            'promedio_acumulado': {'required': False},
+            'estado': {'required': False},
+            'nivel_ingles_id': {'required': False},
+            'promocion_id': {'required': False},
+            'estado_cartera_id': {'required': False},
+            'empresa_id': {'required': False},
+            'eps_id': {'required': False},
+        }
+    
+    def get_nombre_completo(self, obj):
+        """Combina nombres y apellidos para mostrar el nombre completo"""
+        nombres = obj.nombres or ''
+        apellidos = obj.apellidos or ''
+        return f"{apellidos} {nombres}".strip() if (nombres or apellidos) else 'No registrado'
+    
+    def to_representation(self, instance):
+        """Mostrar nombre_completo calculado en la respuesta"""
+        data = super().to_representation(instance)
+        data['nombre_completo'] = self.get_nombre_completo(instance)
+        return data
+    
+    def update(self, instance, validated_data):
+        """Procesar nombre_completo si se envía"""
+        validated_data.pop('fecha_creacion', None)
+        validated_data.pop('fecha_actualizacion', None)
+        
+        nombre_completo = validated_data.pop('nombre_completo', None)
+        if nombre_completo:
+            partes = nombre_completo.strip().split(' ', 1)
+            if len(partes) == 2:
+                validated_data['apellidos'] = partes[0]
+                validated_data['nombres'] = partes[1]
+            elif len(partes) == 1:
+                validated_data['nombres'] = partes[0]
+        
+        from django.utils import timezone
+        instance.fecha_actualizacion = timezone.now()
+        
+        for attr, value in validated_data.items():
+            if hasattr(instance, attr):
+                setattr(instance, attr, value)
+        instance.save()
+        return instance
 
 class OfertasEmpresasSerializer(serializers.ModelSerializer):
     empresa_nombre = serializers.CharField(source='empresa.nombre_comercial', read_only=True)
