@@ -1,10 +1,8 @@
 {
-  "buildCommand": "npm run build:prod 2>/dev/null || npm run build -- --configuration production",
+  "buildCommand": "npm run build",
   "outputDirectory": "dist/front-cofor",
   "installCommand": "npm install",
-  "devCommand": "npm start",
-  "framework": "angular",
-  "ignoreCommand": "git diff --quiet HEAD~1"
+  "devCommand": "npm start"
 }
 
 
