@@ -7,6 +7,7 @@ sqlparse==0.5.3
 
 # MySQL - PyMySQL (puro Python, sin compilación)
 PyMySQL==1.1.1
+cryptography==43.0.3
 dj-database-url==2.3.0
 
 # Servidor WSGI
