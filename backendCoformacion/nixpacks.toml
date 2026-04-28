@@ -1,8 +1,0 @@
-[phases.install]
-cmds = ["pip install -r requirements.txt"]
-
-[phases.build]
-cmds = ["DJANGO_SETTINGS_MODULE=backend_uniempresarial.settings_prod python manage.py collectstatic --noinput"]
-
-[start]
-cmd = "gunicorn backend_uniempresarial.wsgi:application --bind 0.0.0.0:$PORT --workers 2"
