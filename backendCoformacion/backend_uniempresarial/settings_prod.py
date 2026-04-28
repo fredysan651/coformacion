@@ -143,6 +143,12 @@ CORS_ALLOWED_ORIGINS += [
     "https://www.conformacion.twentybyte.com",
     "http://www.conformacion.twentybyte.com",
 ]
+# Permitir todos los subdominios de railway.app y vercel.app
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://.*\.railway\.app$",
+    r"^https://.*\.vercel\.app$",
+    r"^http://localhost(:\d+)?$",
+]
 
 CORS_ALLOW_CREDENTIALS = True
 
