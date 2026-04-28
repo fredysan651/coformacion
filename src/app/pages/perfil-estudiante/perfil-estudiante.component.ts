@@ -206,41 +206,36 @@ export class PerfilEstudianteComponent implements OnInit {
       );
     }
 
-    // Cargar proceso de coformación activo solo si es coformador
-    if (this.isCoformador) {
-      this.procesoCoformacionService.getAll().subscribe({
-        next: (procesos) => {
-          const procesoActivo = procesos.find(p => p.estudiante === this.estudiante!.estudiante_id);
-          if (procesoActivo) {
-            this.procesoCoformacion = procesoActivo;
+    // Cargar proceso de coformación activo para coformadores y estudiantes
+    this.procesoCoformacionService.getAll().subscribe({
+      next: (procesos) => {
+        const procesoActivo = procesos.find(p => p.estudiante === this.estudiante!.estudiante_id);
+        if (procesoActivo) {
+          this.procesoCoformacion = procesoActivo;
 
-            // Cargar empresa del proceso
-            if (procesoActivo.empresa) {
-              this.empresasService.getById(procesoActivo.empresa).subscribe({
-                next: (empresa) => this.empresa = empresa,
-                error: (error) => console.error('Error cargando empresa:', error)
-              });
-            }
-
-            // Cargar estado del proceso
-            if (procesoActivo.estado) {
-              this.estadoProcesoService.getById(procesoActivo.estado).subscribe({
-                next: (estado) => this.estadoProceso = estado,
-                error: (error) => console.error('Error cargando estado proceso:', error)
-              });
-            }
+          // Cargar empresa del proceso
+          if (procesoActivo.empresa) {
+            this.empresasService.getById(procesoActivo.empresa).subscribe({
+              next: (empresa) => this.empresa = empresa,
+              error: (error) => console.error('Error cargando empresa:', error)
+            });
           }
-          this.isLoading = false;
-        },
-        error: (error) => {
-          console.error('Error cargando procesos:', error);
-          this.isLoading = false;
+
+          // Cargar estado del proceso
+          if (procesoActivo.estado) {
+            this.estadoProcesoService.getById(procesoActivo.estado).subscribe({
+              next: (estado) => this.estadoProceso = estado,
+              error: (error) => console.error('Error cargando estado proceso:', error)
+            });
+          }
         }
-      });
-    } else {
-      // Si es estudiante, solo terminar la carga sin cargar procesos
-      this.isLoading = false;
-    }
+        this.isLoading = false;
+      },
+      error: (error) => {
+        console.error('Error cargando procesos:', error);
+        this.isLoading = false;
+      }
+    });
   }
 
   // Métodos auxiliares para mostrar información
@@ -325,6 +320,15 @@ export class PerfilEstudianteComponent implements OnInit {
           estudiante_id: this.estudianteId 
         }
       });
+    }
+  }
+
+  navigateToDocumentos(event: Event) {
+    event.preventDefault();
+    if (this.procesoCoformacion && this.procesoCoformacion.proceso_id) {
+      this.router.navigate(['/documentos-proceso', this.procesoCoformacion.proceso_id]);
+    } else {
+      alert('⚠️ No tienes un proceso de coformación asignado. Contacta con tu coordinador.');
     }
   }
 

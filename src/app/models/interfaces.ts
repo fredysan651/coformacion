@@ -1,5 +1,5 @@
 export interface TipoDocumento {
-  tipo_documento_id: number;
+  tipo_doc_id: number;
   nombre: string;
 }
 
@@ -128,7 +128,7 @@ export interface Empresa {
   estado?: boolean;
   fecha_creacion?: string;
   fecha_actualizacion?: string;
-  nit?: string | null;
+  nit_empresa?: string | null; // Campo de BD
   imagen_url_base64?: string | null; // Imagen en formato base64
   // logo_url?: string | null;  // Comentado temporalmente
 }

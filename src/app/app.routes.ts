@@ -72,6 +72,11 @@ export const routes: Routes = [
     canActivate: [EstudianteOrCoformacionGuard],
     loadComponent: () => import('./pages/proceso-coformacion/proceso-coformacion.component').then(m => m.ProcesoCoformacionComponent) 
   },
+  { 
+    path: 'documentos-proceso/:procesoId', 
+    canActivate: [EstudianteOrCoformacionGuard],
+    loadComponent: () => import('./pages/documentos-proceso/documentos-proceso.component').then(m => m.DocumentosProcesoComponent) 
+  },
 
   // Rutas administrativas (solo coformación)
   { 

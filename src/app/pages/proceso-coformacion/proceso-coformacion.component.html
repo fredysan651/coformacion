@@ -54,7 +54,7 @@
                     <select [(ngModel)]="proceso.empresa" name="empresa" (change)="onEmpresaChange()" required>
                         <option value="0">Seleccione una empresa</option>
                         <option *ngFor="let empresa of empresas" [value]="empresa.empresa_id">
-                            {{ empresa.nombre_comercial }} - {{ empresa.nit }}
+                            {{ empresa.nombre_comercial }} - {{ empresa.nit_empresa }}
                         </option>
                     </select>
                 </div>

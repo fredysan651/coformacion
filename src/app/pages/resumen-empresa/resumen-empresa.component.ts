@@ -152,8 +152,8 @@ export class ResumenEmpresaComponent implements OnInit {
 
     this.companyInfo = {
       razonSocial: empresa.razon_social || '',
-      nit: empresa.nit || '',
-      rut: empresa.nit || '', // Usando NIT como RUT si no hay campo específico
+      nit: empresa.nit_empresa || '',
+      rut: empresa.nit_empresa || '', // Usando NIT como RUT si no hay campo específico
       cantidadEmpleados: empresa.numero_empleados || 0,
       descripcion: empresa.actividad_economica || '',
       nacionalOInternacional: 'Nacional', // Valor por defecto

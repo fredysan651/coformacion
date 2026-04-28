@@ -31,6 +31,7 @@ CREATE TABLE `acompañamiento_estudiantil_coformacion` (
   `empresa_id` int(11) DEFAULT NULL COMMENT 'Quién realiza el acompañamiento (Tabla empresas)',
   `nombre_tutor_empresa` varchar(255) DEFAULT NULL,
   `cargo_tutor_empresa` varchar(255) DEFAULT NULL,
+  `cargo_tutor_empresa` varchar(255) DEFAULT NULL,
   `telefono_tutor_empresa` varchar(20) DEFAULT NULL,
   `email_tutor_empresa` varchar(255) DEFAULT NULL,
   `corte_id` int(11) DEFAULT NULL COMMENT 'Relación con la tabla cortes_coformacion',

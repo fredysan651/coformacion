@@ -1,0 +1,192 @@
+<div class="documentos-proceso-container">
+  <!-- Header -->
+  <div class="header">
+    <button class="btn-back" (click)="goBack()">← Atrás</button>
+    <h1>Gestión de Documentos del Proceso</h1>
+  </div>
+
+  <!-- Información del Proceso -->
+  <div *ngIf="procesoCoformacion && estudiante" class="info-section">
+    <div class="info-card">
+      <div class="info-row">
+        <label>Estudiante:</label>
+        <span>{{ estudiante.nombre_completo }}</span>
+      </div>
+      <div class="info-row">
+        <label>Código Estudiante:</label>
+        <span>{{ estudiante.codigo_estudiante }}</span>
+      </div>
+      <div class="info-row">
+        <label>Email Institucional:</label>
+        <span>{{ estudiante.email_institucional }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mensajes de Error y Éxito -->
+  <div *ngIf="error" class="alert alert-error">
+    {{ error }}
+  </div>
+
+  <div *ngIf="successMessage" class="alert alert-success">
+    {{ successMessage }}
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="isLoading" class="loading">
+    <p>Cargando documentos...</p>
+  </div>
+
+  <!-- Contenido Principal -->
+  <div *ngIf="!isLoading" class="main-content">
+    <!-- Estadísticas -->
+    <div class="stats-section">
+      <div class="stat-card">
+        <div class="stat-number">{{ documentos.length }}</div>
+        <div class="stat-label">Total Documentos</div>
+      </div>
+      <div class="stat-card pending">
+        <div class="stat-number">{{ documentosPendientes }}</div>
+        <div class="stat-label">Pendientes</div>
+      </div>
+      <div class="stat-card approved">
+        <div class="stat-number">{{ documentosAprobados }}</div>
+        <div class="stat-label">Aprobados</div>
+      </div>
+      <div class="stat-card rejected">
+        <div class="stat-number">{{ documentosDevueltos }}</div>
+        <div class="stat-label">Devueltos</div>
+      </div>
+    </div>
+
+    <!-- Botón para cargar documento -->
+    <div class="action-buttons">
+      <button class="btn btn-primary" (click)="openUploadModal()">
+        + Cargar Nuevo Documento
+      </button>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filters-section">
+      <label>Filtrar por Estado:</label>
+      <select [(ngModel)]="filtroEstado" class="filter-select">
+        <option value="">Todos</option>
+        <option *ngFor="let estado of estadosDisponibles" [value]="estado">
+          {{ estado }}
+        </option>
+      </select>
+    </div>
+
+    <!-- Lista de Documentos -->
+    <div class="documentos-list">
+      <div *ngIf="documentosFiltrados.length === 0" class="no-documents">
+        <p>No hay documentos para mostrar</p>
+      </div>
+
+      <div *ngFor="let documento of documentosFiltrados" class="documento-card">
+        <div class="documento-header">
+          <div class="documento-info">
+            <h3>{{ getNombreTipoDocumento(documento.tipo_doc) }}</h3>
+            <p class="documento-id">ID: {{ documento.documento_id }}</p>
+          </div>
+          <div class="documento-estado" [style.background-color]="getColorEstado(documento.estado || 'Pendiente')">
+            {{ documento.estado }}
+          </div>
+        </div>
+
+        <div class="documento-details">
+          <div class="detail-row">
+            <label>Fecha de Envío:</label>
+            <span>{{ documento.fecha_envio | date:'short' }}</span>
+          </div>
+          <div *ngIf="documento.fecha_revision" class="detail-row">
+            <label>Fecha de Revisión:</label>
+            <span>{{ documento.fecha_revision | date:'short' }}</span>
+          </div>
+          <div *ngIf="documento.fecha_aprobacion" class="detail-row">
+            <label>Fecha de Aprobación:</label>
+            <span>{{ documento.fecha_aprobacion | date:'short' }}</span>
+          </div>
+          <div *ngIf="documento.observaciones" class="detail-row">
+            <label>Observaciones:</label>
+            <span>{{ documento.observaciones }}</span>
+          </div>
+        </div>
+
+        <div class="documento-actions">
+          <button class="btn btn-secondary" (click)="verDocumento(documento)" title="Ver documento">
+          ver
+          </button>
+          <button class="btn btn-secondary" (click)="descargarDocumento(documento)" title="Descargar documento">
+            ⬇ Descargar
+          </button>
+          <button class="btn btn-danger" (click)="eliminarDocumento(documento.documento_id!)" title="Eliminar documento">
+            Eliminar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Carga de Documento -->
+  <div *ngIf="showUploadModal" class="modal-overlay" (click)="closeUploadModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Cargar Nuevo Documento</h2>
+        <button class="btn-close" (click)="closeUploadModal()">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="tipoDocumento">Tipo de Documento *</label>
+          <select 
+            id="tipoDocumento" 
+            [(ngModel)]="selectedTipoDoc"
+            class="form-control"
+          >
+            <option [ngValue]="null">-- Selecciona un tipo de documento --</option>
+            <option *ngFor="let tipo of tiposDocumento" [ngValue]="tipo.tipo_doc_id">
+              {{ tipo.nombre }}
+            </option>
+          </select>
+          <small *ngIf="selectedTipoDoc" style="color: green;">OK: {{ selectedTipoDoc }}</small>
+        </div>
+
+        <div class="form-group">
+          <label for="archivo">Archivo *</label>
+          <div class="file-input-wrapper">
+            <input 
+              type="file" 
+              id="archivo" 
+              (change)="onFileSelected($event)"
+              class="file-input"
+              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+            />
+            <span class="file-label">
+              {{ selectedFile ? selectedFile.name : 'Selecciona un archivo' }}
+            </span>
+          </div>
+          <small>Formatos permitidos: PDF, DOC, DOCX, JPG, PNG (Máximo 10 MB)</small>
+        </div>
+
+        <div *ngIf="uploadError" class="alert alert-error">
+          {{ uploadError }}
+        </div>
+
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeUploadModal()" [disabled]="isUploading">
+          Cancelar
+        </button>
+        <button 
+          class="btn btn-primary" 
+          (click)="uploadDocumento()"
+          [disabled]="isUploading"
+        >
+          {{ isUploading ? 'Cargando...' : 'Cargar Documento' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

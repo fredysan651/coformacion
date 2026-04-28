@@ -2,6 +2,7 @@
 <nav class="black-menu">
     <ul>
         <li><a href="/historial-coformacion" class="active" (click)="navigateToHistorialCoformacion()">Historial Coformación</a></li>
+        <li *ngIf="procesoCoformacion" ><a href="#" (click)="navigateToDocumentos($event)">📄 Gestión de Documentos</a></li>
     </ul>
 </nav>
 
@@ -221,7 +222,7 @@
                 </div>
                 <div class="info-field">
                     <label>NIT</label>
-                    <div class="info-value">{{ empresa.nit }}</div>
+                    <div class="info-value">{{ empresa.nit_empresa }}</div>
                 </div>
             </div>
         </div>

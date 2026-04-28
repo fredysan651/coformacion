@@ -17,14 +17,37 @@ export class AuthInterceptor implements HttpInterceptor {
     // Obtener el token de autenticación
     const token = this.authService.getToken();
     
+    // Obtener el estudiante_id si es estudiante
+    const currentUser = this.authService.getCurrentUser();
+    const userType = this.authService.getUserType();
+    
+    let headers = request.headers;
+    
+    console.log('🔍 INTERCEPTOR DEBUG:', {
+      userType,
+      currentUser,
+      estudiante_id: currentUser?.estudiante_id,
+      url: request.url
+    });
+    
     // Si hay token, agregarlo a los headers
     if (token) {
-      request = request.clone({
-        setHeaders: {
-          Authorization: `Bearer ${token}`
-        }
+      headers = headers.set('Authorization', `Bearer ${token}`);
+    }
+    
+    // Si es estudiante, agregar el estudiante_id en el header para filtrado en el backend
+    if (userType === 'estudiante' && currentUser && currentUser.estudiante_id) {
+      console.log('✅ Agregando X-Student-Id:', currentUser.estudiante_id);
+      headers = headers.set('X-Student-Id', currentUser.estudiante_id.toString());
+    } else {
+      console.log('❌ No se agregó X-Student-Id. Condiciones:', {
+        isEstudiante: userType === 'estudiante',
+        hasCurrentUser: !!currentUser,
+        hasEstudianteId: !!currentUser?.estudiante_id
       });
     }
+    
+    request = request.clone({ headers });
 
     // Continuar con la petición y manejar errores de autenticación
     return next.handle(request).pipe(

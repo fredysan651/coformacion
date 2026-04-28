@@ -76,7 +76,7 @@ export class EditarEmpresaComponent implements OnInit {
     estado: true,
     fecha_creacion: '',
     fecha_actualizacion: '',
-    nit: ''
+    nit_empresa: ''
   };
   
   // Campos adicionales para el formulario
@@ -295,7 +295,7 @@ export class EditarEmpresaComponent implements OnInit {
   isValidEmpresaForm(): boolean {
     return !!(
       (this.empresa.razon_social || '').trim() &&
-      (this.empresa.nit || '').trim() &&
+      (this.empresa.nit_empresa || '').trim() &&
       this.empresa.sector &&
       this.empresa.tamano &&
       (this.empresa.direccion || '').trim() &&
@@ -345,7 +345,7 @@ export class EditarEmpresaComponent implements OnInit {
       const empresaData: any = {
         razon_social: this.empresa.razon_social,
         nombre_comercial: this.empresa.nombre_comercial || '',
-        nit: this.empresa.nit,
+        nit_empresa: this.empresa.nit_empresa,
         sector: this.empresa.sector ? parseInt(String(this.empresa.sector)) : null,
         tamano: this.empresa.tamano ? parseInt(String(this.empresa.tamano)) : null,
         direccion: this.empresa.direccion,

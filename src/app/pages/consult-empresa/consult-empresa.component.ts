@@ -131,7 +131,7 @@ export class ConsultEmpresaComponent implements OnInit {
       const searchLower = this.searchTerm.toLowerCase();
       resultados = resultados.filter(empresa => 
         (empresa.nombre_comercial || '').toLowerCase().includes(searchLower) ||
-        (empresa.nit || '').includes(searchLower) ||
+        (empresa.nit_empresa || '').includes(searchLower) ||
         this.getSectorNombre(empresa.sector).toLowerCase().includes(searchLower)
       );
       console.log('Después de búsqueda de texto:', resultados.length, 'empresas');
