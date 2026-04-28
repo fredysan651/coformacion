@@ -434,6 +434,182 @@ class ProcesoCoformacionViewSet(viewsets.ModelViewSet):
 class DocumentosProcesoViewSet(viewsets.ModelViewSet):
     queryset = DocumentosProceso.objects.all()
     serializer_class = DocumentosProcesoSerializer
+    
+    def get_queryset(self):
+        """
+        Filtrar documentos por:
+        1. Query param: proceso_id (obligatorio en getByProcesoId)
+        2. Query param: estudiante_id (si viene, solo documetos de ese estudiante)
+        3. Header: X-Student-Id (respaldo del interceptor)
+        
+        - Estudiantes solo ven sus propios documentos
+        - Administrativos ven todos
+        """
+        queryset = DocumentosProceso.objects.all()
+        
+        print(f"\n📋 GET_QUERYSET DEBUG:")
+        print(f"  Query params: {dict(self.request.query_params)}")
+        print(f"  Headers: X-Student-Id={self.request.headers.get('X-Student-Id')}")
+        
+        # Aplicar filtro de proceso_id (query param)
+        proceso_id = self.request.query_params.get('proceso_id')
+        if proceso_id:
+            try:
+                proceso_id = int(proceso_id)
+                queryset = queryset.filter(proceso_id=proceso_id)
+                print(f"  ✅ Filtered by proceso_id={proceso_id}")
+            except (ValueError, TypeError):
+                pass
+        
+        # Aplicar filtro de estudiante_id (PRIORIDAD: query param > header)
+        student_id = self.request.query_params.get('estudiante_id') or self.request.headers.get('X-Student-Id')
+        
+        if student_id:
+            try:
+                student_id = int(student_id)
+                queryset = queryset.filter(proceso__estudiante_id=student_id)
+                print(f"  ✅ Filtered by proceso.estudiante_id={student_id}")
+            except (ValueError, TypeError) as e:
+                print(f"  ❌ Error parsing student_id: {e}")
+        
+        final_count = queryset.count()
+        print(f"  📊 Final documentos: {final_count}\n")
+        
+        return queryset
+    
+    @action(detail=False, methods=['post'], url_path='upload', url_name='documento-upload')
+    def upload(self, request):
+        """
+        Endpoint para subir documentos con multipart/form-data
+        Parámetros esperados:
+        - file: archivo (multipart)
+        - proceso_id: ID del proceso (int)
+        - tipo_doc_id: ID del tipo de documento (int)
+        """
+        try:
+            # Obtener el archivo
+            file = request.FILES.get('file')
+            if not file:
+                return Response(
+                    {'error': 'No se proporcionó ningún archivo'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Obtener proceso_id y tipo_doc_id
+            proceso_id = request.POST.get('proceso_id')
+            tipo_doc_id = request.POST.get('tipo_doc_id')
+            
+            if not proceso_id or not tipo_doc_id:
+                return Response(
+                    {'error': 'Faltan parámetros: proceso_id o tipo_doc_id'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Validar que el proceso existe
+            from .models import ProcesoCoformacion, TiposDocumento
+            try:
+                proceso = ProcesoCoformacion.objects.get(proceso_id=int(proceso_id))
+            except ProcesoCoformacion.DoesNotExist:
+                return Response(
+                    {'error': f'Proceso {proceso_id} no encontrado'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Validar que el tipo de documento existe
+            try:
+                tipo_doc = TiposDocumento.objects.get(tipo_doc_id=int(tipo_doc_id))
+            except TiposDocumento.DoesNotExist:
+                return Response(
+                    {'error': f'Tipo de documento {tipo_doc_id} no encontrado'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Crear directorio si no existe
+            from django.conf import settings
+            import os
+            media_documentos = os.path.join(settings.MEDIA_ROOT, 'documentos')
+            os.makedirs(media_documentos, exist_ok=True)
+            
+            # Generar nombre único para el archivo
+            import time
+            timestamp = int(time.time() * 1000)
+            original_name = os.path.splitext(file.name)
+            file_name = f"doc_{proceso_id}_{timestamp}{original_name[1]}"
+            file_path = os.path.join(media_documentos, file_name)
+            
+            # Guardar el archivo
+            with open(file_path, 'wb') as f:
+                for chunk in file.chunks():
+                    f.write(chunk)
+            
+            # Crear registro en la base de datos
+            documento = DocumentosProceso.objects.create(
+                proceso=proceso,
+                tipo_doc=tipo_doc,
+                url_documento=f'documentos/{file_name}',  # ruta relativa
+                fecha_envio=__import__('django.utils.timezone', fromlist=['now']).now(),
+                estado='Pendiente'
+            )
+            
+            # Retornar el documento creado
+            serializer = self.get_serializer(documento)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            import traceback
+            error_trace = traceback.format_exc()
+            print(f"❌ Error al cargar documento: {e}")
+            print(error_trace)
+            return Response(
+                {'error': f'Error al cargar documento: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=True, methods=['get'], url_path='download', url_name='documento-download')
+    def download(self, request, pk=None):
+        """
+        Endpoint para descargar un documento
+        """
+        try:
+            documento = self.get_object()
+            
+            from django.conf import settings
+            import os
+            
+            # Construir la ruta del archivo
+            file_path = os.path.join(settings.MEDIA_ROOT, documento.url_documento)
+            
+            # Validar que el archivo existe
+            if not os.path.exists(file_path):
+                return Response(
+                    {'error': 'Archivo no encontrado'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Retornar el archivo
+            from django.http import FileResponse
+            response = FileResponse(open(file_path, 'rb'))
+            
+            # Obtener el nombre del archivo original
+            file_name = os.path.basename(file_path)
+            response['Content-Disposition'] = f'attachment; filename="{file_name}"'
+            
+            return response
+            
+        except DocumentosProceso.DoesNotExist:
+            return Response(
+                {'error': 'Documento no encontrado'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            import traceback
+            error_trace = traceback.format_exc()
+            print(f"❌ Error al descargar documento: {e}")
+            print(error_trace)
+            return Response(
+                {'error': f'Error al descargar documento: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class TiposActividadViewSet(viewsets.ModelViewSet):
@@ -674,7 +850,8 @@ def recomendaciones_por_estudiante(request, estudiante_id):
                 index = oferta.idOferta % estudiantes_compatibles.count()
                 estudiante_asignado = estudiantes_compatibles[index]
 
-                oferta_data["estudiante"] = estudiante_asignado.nombre_completo
+                nombre_completo = f"{estudiante_asignado.nombres} {estudiante_asignado.apellidos}".strip()
+                oferta_data["estudiante"] = nombre_completo
                 oferta_data["estudiante_id"] = estudiante_asignado.estudiante_id
                 recomendaciones.append(oferta_data)
             else:
@@ -717,7 +894,8 @@ def recomendaciones_completas(request):
                 # Crear una recomendación para cada estudiante compatible
                 for i, estudiante in enumerate(estudiantes_compatibles):
                     oferta_recomendacion = oferta_data.copy()
-                    oferta_recomendacion["estudiante"] = estudiante.nombre_completo
+                    nombre_completo = f"{estudiante.nombres} {estudiante.apellidos}".strip()
+                    oferta_recomendacion["estudiante"] = nombre_completo
                     oferta_recomendacion["estudiante_id"] = estudiante.estudiante_id
                     oferta_recomendacion["es_principal"] = i == 0  # Marcar el primer estudiante como principal
                     recomendaciones_completas.append(oferta_recomendacion)

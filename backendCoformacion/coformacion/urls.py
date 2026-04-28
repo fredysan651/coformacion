@@ -2,6 +2,7 @@ from django.urls import path, include
 from . import views
 from rest_framework.routers import DefaultRouter
 from .views import recomendaciones_por_estudiante, recomendaciones_completas
+from .diagnostico import diagnostico_headers
 from .views import *
 
 
@@ -27,7 +28,7 @@ router.register(r'contactos-empresa', ContactosEmpresaViewSet)
 router.register(r'ofertas-empresas', OfertasEmpresasViewSet)
 router.register(r'estado-proceso', EstadoProcesoViewSet)
 router.register(r'proceso-coformacion', ProcesoCoformacionViewSet, basename='proceso-coformacion')
-router.register(r'documentos-proceso', DocumentosProcesoViewSet)
+router.register(r'documentos-proceso', DocumentosProcesoViewSet, basename='documentos-proceso')
 router.register(r'tipos-actividad', TiposActividadViewSet)
 router.register(r'calendario-actividades', CalendarioActividadesViewSet)
 router.register(r'plantillas-correo', PlantillasCorreoViewSet)
@@ -36,6 +37,7 @@ router.register(r'coformacion', CoformacionViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('diagnostico-headers/', diagnostico_headers, name='diagnostico_headers'),
     path('auth/login/', login_universal, name='login_universal'),
     path('auth/login-estudiante/', login_estudiante, name='login_estudiante'),
     path('recomendar-ofertas/', views.recomendar_ofertas, name='recomendar_ofertas'),

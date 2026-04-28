@@ -26,14 +26,13 @@ class Permisos(models.Model):
 
 
 class RolesPermisos(models.Model):
-    id = models.BigAutoField(primary_key=True)
-    rol = models.ForeignKey(Roles, on_delete=models.DO_NOTHING, db_column='rol_id')
-    permiso = models.ForeignKey(Permisos, on_delete=models.DO_NOTHING, db_column='permiso_id')
+    rol = models.ForeignKey(Roles, on_delete=models.CASCADE, db_column='rol_id', primary_key=True)
+    permiso = models.ForeignKey(Permisos, on_delete=models.CASCADE, db_column='permiso_id')
     fecha_asignacion = models.DateTimeField(blank=True, null=True)
 
     class Meta:
         db_table = 'roles_permisos'
-        unique_together = (('rol', 'permiso'),)
+        managed = False
 
 class TiposDocumento(models.Model):
     tipo_doc_id = models.AutoField(primary_key=True)
@@ -352,20 +351,48 @@ class ProcesoCoformacion(models.Model):
     proceso_id = models.AutoField(primary_key=True)
     estudiante = models.ForeignKey('Estudiantes', on_delete=models.CASCADE, db_column='estudiante_id')
     empresa = models.ForeignKey('Empresas', on_delete=models.CASCADE, db_column='empresa_id')
-    oferta = models.ForeignKey('OfertasEmpresas', on_delete=models.CASCADE, db_column='oferta_id', to_field='idOferta')
-    fecha_inicio = models.DateField()
-    fecha_fin = models.DateField(null=True, blank=True)
     estado = models.ForeignKey(EstadoProceso, on_delete=models.SET_NULL, null=True, db_column='estado_id')
+    fecha_inicio_fase_coformacion = models.DateField()
+    fecha_fin_fase_practica = models.DateField(null=True, blank=True)
+    fecha_ingreso_empresa = models.DateField(null=True, blank=True)
+    fecha_finalizacion_empresa = models.DateField(null=True, blank=True)
+    fecha_carta_presentacion = models.DateField(null=True, blank=True)
+    horario = models.TextField(null=True, blank=True)
+    forma_de_pago = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    trabaja_sabado = models.BooleanField(null=True, blank=True)
+    salario = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    modalidad_vinculacion = models.CharField(max_length=10, null=True, blank=True)
+    carta_presentacion_enviada = models.CharField(max_length=2, null=True, blank=True)
+    carta_presentacion_recibida = models.CharField(max_length=2, null=True, blank=True)
+    modalidad_coformacion = models.CharField(max_length=10, null=True, blank=True)
     observaciones = models.TextField(null=True, blank=True)
+    fecha_creacion = models.DateTimeField(null=True, blank=True)
+    fecha_actualizacion = models.DateTimeField(null=True, blank=True)
 
     class Meta:
-        db_table = 'proceso_coformacion'
+        db_table = 'procesos_coformacion'
 
 
 class DocumentosProceso(models.Model):
+    ESTADO_CHOICES = [
+        ('Pendiente', 'Pendiente'),
+        ('En Revisión', 'En Revisión'),
+        ('Aprobado', 'Aprobado'),
+        ('Devuelto', 'Devuelto'),
+    ]
+    
     documento_id = models.AutoField(primary_key=True)
+    proceso = models.ForeignKey('ProcesoCoformacion', on_delete=models.CASCADE, db_column='proceso_id', to_field='proceso_id')
+    tipo_doc = models.ForeignKey('TiposDocumento', on_delete=models.RESTRICT, db_column='tipo_doc_id', to_field='tipo_doc_id')
     url_documento = models.CharField(max_length=255)
-    proceso = models.ForeignKey('ProcesosCoformacion', on_delete=models.CASCADE, db_column='proceso_id')
+    fecha_envio = models.DateTimeField()
+    fecha_revision = models.DateTimeField(null=True, blank=True)
+    fecha_aprobacion = models.DateTimeField(null=True, blank=True)
+    estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default='Pendiente')
+    observaciones = models.TextField(null=True, blank=True)
+    revisado_por = models.ForeignKey('Roles', on_delete=models.SET_NULL, null=True, blank=True, db_column='revisado_por')
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = 'documentos_proceso'
@@ -467,7 +494,6 @@ class ProcesosCoformacion(models.Model):
     fecha_actualizacion = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        db_table = 'procesos_coformacion'
         indexes = [
             models.Index(fields=['fecha_inicio_fase_coformacion'], name='idx_fecha_inicio'),
         ]

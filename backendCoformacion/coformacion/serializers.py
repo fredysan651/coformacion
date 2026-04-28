@@ -281,15 +281,62 @@ class EstadoProcesoSerializer(serializers.ModelSerializer):
 
 
 class ProcesoCoformacionSerializer(serializers.ModelSerializer):
+    # Mapear campos con nombres más simples para el frontend
+    fecha_inicio = serializers.DateField(source='fecha_inicio_fase_coformacion')
+    fecha_fin = serializers.DateField(source='fecha_fin_fase_practica', required=False, allow_null=True)
+    
     class Meta:
         model = ProcesoCoformacion
-        fields = '__all__'
+        fields = [
+            'proceso_id', 'estudiante', 'empresa', 'estado',
+            'fecha_inicio', 'fecha_fin',
+            'fecha_ingreso_empresa', 'fecha_finalizacion_empresa',
+            'fecha_carta_presentacion', 'horario', 'forma_de_pago',
+            'trabaja_sabado', 'salario', 'modalidad_vinculacion',
+            'carta_presentacion_enviada', 'carta_presentacion_recibida',
+            'modalidad_coformacion', 'observaciones',
+            'fecha_creacion', 'fecha_actualizacion'
+        ]
+    
+    def create(self, validated_data):
+        # Mapear campos al crear
+        fecha_inicio = validated_data.pop('fecha_inicio_fase_coformacion', None)
+        fecha_fin = validated_data.pop('fecha_fin_fase_practica', None)
+        
+        proceso = ProcesoCoformacion.objects.create(
+            fecha_inicio_fase_coformacion=fecha_inicio,
+            fecha_fin_fase_practica=fecha_fin,
+            **validated_data
+        )
+        return proceso
+    
+    def update(self, instance, validated_data):
+        # Mapear campos al actualizar
+        fecha_inicio = validated_data.pop('fecha_inicio_fase_coformacion', None)
+        fecha_fin = validated_data.pop('fecha_fin_fase_practica', None)
+        
+        if fecha_inicio is not None:
+            instance.fecha_inicio_fase_coformacion = fecha_inicio
+        if fecha_fin is not None:
+            instance.fecha_fin_fase_practica = fecha_fin
+            
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        
+        instance.save()
+        return instance
 
 
 class DocumentosProcesoSerializer(serializers.ModelSerializer):
     class Meta:
         model = DocumentosProceso
         fields = '__all__'
+        extra_kwargs = {
+            'fecha_envio': {'required': True},
+            'proceso': {'required': True},
+            'tipo_doc': {'required': True},
+            'url_documento': {'required': True},
+        }
 
 
 class TiposActividadSerializer(serializers.ModelSerializer):
