@@ -1,27 +1,27 @@
 """
 Django settings for backend_uniempresarial project - PRODUCTION CONFIGURATION
-Configurado para conformacion.twentybyte.com
+Configurado para Railway + Vercel
 """
 
 from pathlib import Path
 import os
+import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-feyc=i-%kiwivac0p#ti_q3lvff-6on187zit40j&(p#j9#dcy'
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-feyc=i-%kiwivac0p#ti_q3lvff-6on187zit40j&(p#j9#dcy')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-# Configuración para conformacion.twentybyte.com
-ALLOWED_HOSTS = [
-    'conformacion.twentybyte.com',
-    'www.conformacion.twentybyte.com',
-    'localhost',
-    '127.0.0.1'
-]
+# Hosts permitidos — Railway agrega su dominio via variable de entorno
+_allowed = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1')
+ALLOWED_HOSTS = [h.strip() for h in _allowed.split(',') if h.strip()]
+# Siempre incluir dominio de producción
+if 'conformacion.twentybyte.com' not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS += ['conformacion.twentybyte.com', 'www.conformacion.twentybyte.com']
 
 # Application definition
 INSTALLED_APPS = [
@@ -67,21 +67,38 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'backend_uniempresarial.wsgi.application'
 
-# Database - Configuración para MySQL existente en puerto 3306
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'coformacion1',
-        'USER': 'coformacion_user',
-        'PASSWORD': 'Coformacion2024#Secure',
-        'HOST': 'localhost',
-        'PORT': '3306',
-        'OPTIONS': {
-            'charset': 'utf8mb4',
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-        },
+# Database — Railway provee DATABASE_URL automáticamente cuando agregas MySQL
+# Si no hay DATABASE_URL, usa MySQL local como fallback
+_database_url = os.environ.get('DATABASE_URL')
+if _database_url:
+    DATABASES = {
+        'default': dj_database_url.parse(
+            _database_url,
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
     }
-}
+    # Asegurar charset utf8mb4 para MySQL en Railway
+    if 'mysql' in _database_url:
+        DATABASES['default'].setdefault('OPTIONS', {})
+        DATABASES['default']['OPTIONS']['charset'] = 'utf8mb4'
+        DATABASES['default']['OPTIONS']['init_command'] = "SET sql_mode='STRICT_TRANS_TABLES'"
+else:
+    # Fallback: MySQL local
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': os.environ.get('DB_NAME', 'coformacion1'),
+            'USER': os.environ.get('DB_USER', 'coformacion_user'),
+            'PASSWORD': os.environ.get('DB_PASSWORD', 'Coformacion2024#Secure'),
+            'HOST': os.environ.get('DB_HOST', 'localhost'),
+            'PORT': os.environ.get('DB_PORT', '3306'),
+            'OPTIONS': {
+                'charset': 'utf8mb4',
+                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            },
+        }
+    }
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
@@ -116,8 +133,11 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# CORS settings para conformacion.twentybyte.com
-CORS_ALLOWED_ORIGINS = [
+# CORS settings — incluye Vercel y dominio de producción
+_cors = os.environ.get('CORS_ALLOWED_ORIGINS', '')
+CORS_ALLOWED_ORIGINS = [o.strip() for o in _cors.split(',') if o.strip()]
+# Siempre incluir dominios base
+CORS_ALLOWED_ORIGINS += [
     "https://conformacion.twentybyte.com",
     "http://conformacion.twentybyte.com",
     "https://www.conformacion.twentybyte.com",
@@ -131,25 +151,24 @@ SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
 
-# Logging configuration
+# Logging — usar consola en Railway (no /var/log que no existe en containers)
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'handlers': {
-        'file': {
+        'console': {
             'level': 'INFO',
-            'class': 'logging.FileHandler',
-            'filename': '/var/log/coformacion.log',
+            'class': 'logging.StreamHandler',
         },
     },
     'loggers': {
         'django': {
-            'handlers': ['file'],
+            'handlers': ['console'],
             'level': 'INFO',
             'propagate': True,
         },
         'coformacion': {
-            'handlers': ['file'],
+            'handlers': ['console'],
             'level': 'INFO',
             'propagate': True,
         },
