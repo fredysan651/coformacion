@@ -7,7 +7,7 @@ services:
     buildCommand: |
       pip install --upgrade pip
       pip install -r requirements.txt
-      python manage.py collectstatic --noinput
+      DJANGO_SETTINGS_MODULE=backend_uniempresarial.settings_prod python manage.py collectstatic --noinput
     startCommand: gunicorn backend_uniempresarial.wsgi:application
     envVars:
       - key: PYTHON_VERSION
