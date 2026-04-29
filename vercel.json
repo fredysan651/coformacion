@@ -1,9 +1,9 @@
 {
   "buildCommand": "npm install && npm run build -- --configuration production",
-  "outputDirectory": "dist/front-cofor",
+  "outputDirectory": "dist/front-cofor/browser",
   "framework": "angular",
   "installCommand": "npm install",
-  "devCommand": "npm start"
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }
-
-
