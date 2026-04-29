@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { environment } from '../../../../environments/environment';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
@@ -304,8 +305,9 @@ export class EditarEstudianteComponent implements OnInit {
       if (this.estudiante.foto.startsWith('http')) {
         return this.estudiante.foto;
       }
-      // Si es una ruta relativa del servidor, agregarle el dominio
-      return `http://127.0.0.1:8001${this.estudiante.foto}`;
+      // Si es una ruta relativa del servidor, agregarle el dominio base
+      const baseUrl = environment.apiUrl.replace('/api', '');
+      return `${baseUrl}${this.estudiante.foto}`;
     }
     // Si no hay foto, mostrar la imagen por defecto
     return 'assets/userLogo.png';
